@@ -2,7 +2,6 @@
 #![no_main]
 
 use embedded_hal::delay::DelayNs;
-use hd44780_driver::HD44780;
 
 // Hardware Abstraction Layer
 use rp_pico::hal;
@@ -17,9 +16,10 @@ use embedded_hal::digital::{InputPin, OutputPin};
 use hal::clocks::Clock;
 use hal::fugit::RateExtU32;
 
+use crate::lcd::LcdDisplay;
 use hal::uart::*;
 
-const LCD_ADDR: u8 = 0x27;
+mod lcd;
 
 #[hal::entry]
 fn main() -> ! {
@@ -72,8 +72,7 @@ fn main() -> ! {
         &clocks.system_clock,
     );
 
-    let mut lcd = HD44780::new_i2c(i2c, LCD_ADDR, &mut timer)
-        .unwrap_or_else(|_| core::panic!("LCD init error!"));
+    let mut lcd = LcdDisplay::new(i2c, timer);
 
     // LED
     let mut led_pin = pins.gpio5.into_push_pull_output();
@@ -96,17 +95,10 @@ fn main() -> ! {
 
     loop {
         timer.delay_ms(500);
-        lcd.clear(&mut timer).unwrap();
-        lcd.write_str("Hello, Pico", &mut timer).unwrap();
-        timer.delay_ms(1000);
+        lcd.write_line("Hello, Pico", &mut timer);
 
-        lcd.clear(&mut timer).unwrap();
-        lcd.write_str("@yu1hpa", &mut timer).unwrap();
         timer.delay_ms(1000);
-
-        lcd.clear(&mut timer).unwrap();
-        lcd.write_bytes(&[0x74, 0x65, 0x73, 0x74], &mut timer)
-            .unwrap();
+        lcd.write_line("@yu1hpa", &mut timer);
 
         if led_button.is_low().unwrap() {
             led_pin.set_high().unwrap();
