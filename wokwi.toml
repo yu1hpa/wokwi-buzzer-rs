@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = "target/thumbv6m-none-eabi/debug/wokwi-buzzer-rs.uf2"
+elf = "target/thumbv6m-none-eabi/debug/wokwi-buzzer-rs"
