@@ -15,9 +15,10 @@ use core::fmt::Write;
 use embedded_hal::digital::{InputPin, OutputPin};
 use hal::clocks::Clock;
 use hal::fugit::RateExtU32;
+use hal::uart::*;
+use heapless::String;
 
 use crate::lcd::LcdDisplay;
-use hal::uart::*;
 
 mod lcd;
 
@@ -93,17 +94,26 @@ fn main() -> ! {
 
     writeln!(uart, "Hello, world!\r").unwrap();
 
-    loop {
-        timer.delay_ms(500);
-        lcd.write_line("Hello, Pico", &mut timer);
+    timer.delay_ms(500);
+    lcd.write_line("@yu1hpa", &mut timer);
 
-        timer.delay_ms(1000);
-        lcd.write_line("@yu1hpa", &mut timer);
+    let mut value = 0u32;
+    let mut loop_cnt = 0u32;
+    let mut s: String<64> = String::new();
+    loop {
+        if loop_cnt % 50000 == 0 {
+            s.clear();
+            write!(&mut s, "{}", value).unwrap();
+            lcd.write_line(&s, &mut timer);
+            value += 1;
+        }
 
         if led_button.is_low().unwrap() {
             led_pin.set_high().unwrap();
         } else {
             led_pin.set_low().unwrap();
         }
+
+        loop_cnt += 1;
     }
 }
