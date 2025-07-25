@@ -1,4 +1,3 @@
-//use crate::hal::Timer;
 use hd44780_driver::bus::I2CBus;
 use hd44780_driver::HD44780;
 use rp_pico::hal::i2c::{ValidPinScl, ValidPinSda, I2C};
@@ -6,6 +5,12 @@ use rp_pico::hal::pac::I2C0;
 use rp_pico::hal::Timer;
 
 const LCD_ADDR: u8 = 0x27;
+
+#[derive(Debug)]
+pub enum LcdError {
+    ClearError,
+    WriteStrError,
+}
 
 pub struct LcdDisplay<SDA, SCL>
 where
@@ -27,8 +32,17 @@ where
         Self { lcd }
     }
 
-    pub fn write_line(&mut self, text: &str, timer: &mut Timer) {
-        self.lcd.clear(timer).unwrap();
-        self.lcd.write_str(text, timer).unwrap();
+    pub fn write_line(&mut self, text: &str, timer: &mut Timer) -> Result<(), LcdError> {
+        match self.lcd.clear(timer) {
+            Ok(_) => (),
+            Err(_err) => return Err(LcdError::ClearError),
+        }
+
+        match self.lcd.write_str(text, timer) {
+            Ok(_) => (),
+            Err(_err) => return Err(LcdError::WriteStrError),
+        }
+
+        Ok(())
     }
 }
