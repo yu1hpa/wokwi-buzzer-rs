@@ -95,7 +95,7 @@ fn main() -> ! {
     writeln!(uart, "Hello, world!\r").unwrap();
 
     timer.delay_ms(500);
-    lcd.write_line("@yu1hpa", &mut timer);
+    lcd.write_line("@yu1hpa", &mut timer).unwrap();
 
     let mut value = 0u32;
     let mut loop_cnt = 0u32;
@@ -104,7 +104,7 @@ fn main() -> ! {
         if loop_cnt % 50000 == 0 {
             s.clear();
             write!(&mut s, "{}", value).unwrap();
-            lcd.write_line(&s, &mut timer);
+            lcd.write_line(&s, &mut timer).unwrap();
             value += 1;
         }
 
