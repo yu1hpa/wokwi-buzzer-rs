@@ -17,6 +17,36 @@ mod lcd;
 
 const LCD_UPDATE_INTERVAL: u32 = 50000;
 
+struct Status {
+    lock: bool,
+    display_value: u32,
+}
+
+impl Status {
+    fn new() -> Self {
+        Self {
+            lock: false,
+            display_value: 0u32,
+        }
+    }
+
+    fn set_lock(&mut self) {
+        self.lock = true;
+    }
+
+    fn unset_lock(&mut self) {
+        self.lock = false;
+    }
+
+    fn inc_value(&mut self) {
+        self.display_value += 1;
+    }
+
+    fn reset_value(&mut self) {
+        self.display_value = 0;
+    }
+}
+
 #[hal::entry]
 fn main() -> ! {
     let mut pac = pac::Peripherals::take().unwrap();
@@ -100,42 +130,47 @@ fn main() -> ! {
     lcd.write_line("@yu1hpa", &mut timer).unwrap();
     timer.delay_ms(500);
 
-    let mut value = 0u32;
     let mut loop_cnt = 0u32;
-    let mut s: String<64> = String::new();
-    let mut lock = false;
+    let mut status = Status::new();
     loop {
-        if loop_cnt % LCD_UPDATE_INTERVAL == 0 && !lock {
-            s.clear();
-            write!(&mut s, "{}", value).unwrap();
+        // LCDディスプレイに早押しボタンが押されるまでカウントを表示
+        if loop_cnt % LCD_UPDATE_INTERVAL == 0 && !status.lock {
+            let mut s: String<64> = String::new(); // heapless
+            write!(&mut s, "{}", status.display_value).unwrap();
             lcd.write_line(&s, &mut timer).unwrap();
-            value += 1;
+
+            status.inc_value();
         }
 
-        if red_button.is_low().unwrap() && !lock {
-            lock = true;
+        // 赤色のボタン
+        if red_button.is_low().unwrap() && !status.lock {
+            status.set_lock();
             rgb_led_red_pin.set_high().unwrap();
             lcd.write_line("Red!!", &mut timer).unwrap();
         }
 
-        if blue_button.is_low().unwrap() && !lock {
-            lock = true;
+        // 青色のボタン
+        if blue_button.is_low().unwrap() && !status.lock {
+            status.set_lock();
             rgb_led_blue_pin.set_high().unwrap();
             lcd.write_line("Blue!!", &mut timer).unwrap();
         }
 
+        // 黒（リセット）ボタン
         if reset_button.is_low().unwrap() {
             rgb_led_red_pin.set_low().unwrap();
             rgb_led_blue_pin.set_low().unwrap();
-            lock = false;
-            value = 0;
+            status.unset_lock();
+            status.reset_value();
         }
 
-        if correct_button.is_low().unwrap() && lock {
+        // 赤または青色のボタンが押された後、正解だった場合に押す
+        if correct_button.is_low().unwrap() && status.lock {
             lcd.write_line("Correct!", &mut timer).unwrap();
         }
 
-        if incorrect_button.is_low().unwrap() && lock {
+        // 赤または青色のボタンが押された後、不正解だった場合に押す
+        if incorrect_button.is_low().unwrap() && status.lock {
             lcd.write_line("Incorrect!", &mut timer).unwrap();
         }
 
