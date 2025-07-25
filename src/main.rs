@@ -1,25 +1,18 @@
 #![no_std]
 #![no_main]
 
-use embedded_hal::delay::DelayNs;
-
-// Hardware Abstraction Layer
-use rp_pico::hal;
-// periheral access crate
-use hal::pac;
-
-use panic_halt as _;
-
-// traits
 use core::fmt::Write;
+use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{InputPin, OutputPin};
 use hal::clocks::Clock;
 use hal::fugit::RateExtU32;
+use hal::pac;
 use hal::uart::*;
 use heapless::String;
+use panic_halt as _;
+use rp_pico::hal;
 
 use crate::lcd::LcdDisplay;
-
 mod lcd;
 
 const LCD_UPDATE_INTERVAL: u32 = 50000;
@@ -78,8 +71,16 @@ fn main() -> ! {
     let mut lcd = LcdDisplay::new(i2c, timer);
 
     // LED
-    let mut led_pin = pins.gpio5.into_push_pull_output();
-    let mut led_button = pins.gpio20.into_pull_up_input();
+    let mut rgb_led_red_pin = pins.gpio28.into_push_pull_output();
+    let mut _rgb_led_green_pin = pins.gpio27.into_push_pull_output();
+    let mut rgb_led_blue_pin = pins.gpio26.into_push_pull_output();
+
+    // Button
+    let mut red_button = pins.gpio18.into_pull_up_input();
+    let mut blue_button = pins.gpio19.into_pull_up_input();
+    let mut reset_button = pins.gpio20.into_pull_up_input();
+    let mut correct_button = pins.gpio4.into_pull_up_input();
+    let mut incorrect_button = pins.gpio5.into_pull_up_input();
 
     let uart_pins = (
         // UART TX (characters sent from RP2040) on pin 1 (GPIO0)
@@ -102,18 +103,40 @@ fn main() -> ! {
     let mut value = 0u32;
     let mut loop_cnt = 0u32;
     let mut s: String<64> = String::new();
+    let mut lock = false;
     loop {
-        if loop_cnt % LCD_UPDATE_INTERVAL == 0 {
+        if loop_cnt % LCD_UPDATE_INTERVAL == 0 && !lock {
             s.clear();
             write!(&mut s, "{}", value).unwrap();
             lcd.write_line(&s, &mut timer).unwrap();
             value += 1;
         }
 
-        if led_button.is_low().unwrap() {
-            led_pin.set_high().unwrap();
-        } else {
-            led_pin.set_low().unwrap();
+        if red_button.is_low().unwrap() && !lock {
+            lock = true;
+            rgb_led_red_pin.set_high().unwrap();
+            lcd.write_line("Red!!", &mut timer).unwrap();
+        }
+
+        if blue_button.is_low().unwrap() && !lock {
+            lock = true;
+            rgb_led_blue_pin.set_high().unwrap();
+            lcd.write_line("Blue!!", &mut timer).unwrap();
+        }
+
+        if reset_button.is_low().unwrap() {
+            rgb_led_red_pin.set_low().unwrap();
+            rgb_led_blue_pin.set_low().unwrap();
+            lock = false;
+            value = 0;
+        }
+
+        if correct_button.is_low().unwrap() && lock {
+            lcd.write_line("Correct!", &mut timer).unwrap();
+        }
+
+        if incorrect_button.is_low().unwrap() && lock {
+            lcd.write_line("Incorrect!", &mut timer).unwrap();
         }
 
         loop_cnt += 1;
