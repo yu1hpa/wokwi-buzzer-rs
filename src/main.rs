@@ -22,6 +22,8 @@ use crate::lcd::LcdDisplay;
 
 mod lcd;
 
+const LCD_UPDATE_INTERVAL: u32 = 50000;
+
 #[hal::entry]
 fn main() -> ! {
     let mut pac = pac::Peripherals::take().unwrap();
@@ -94,14 +96,14 @@ fn main() -> ! {
 
     writeln!(uart, "Hello, world!\r").unwrap();
 
-    timer.delay_ms(500);
     lcd.write_line("@yu1hpa", &mut timer).unwrap();
+    timer.delay_ms(500);
 
     let mut value = 0u32;
     let mut loop_cnt = 0u32;
     let mut s: String<64> = String::new();
     loop {
-        if loop_cnt % 50000 == 0 {
+        if loop_cnt % LCD_UPDATE_INTERVAL == 0 {
             s.clear();
             write!(&mut s, "{}", value).unwrap();
             lcd.write_line(&s, &mut timer).unwrap();
