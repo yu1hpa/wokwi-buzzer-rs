@@ -210,10 +210,9 @@ dependencies = [
 [[package]]
 name = "hd44780-driver"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aab2b13fdeaed7dde9133a57c28b2cbde4a8fc8c3196b5631428aad114857d3a"
+source = "git+https://github.com/JohnDoneth/hd44780-driver.git?rev=9009f2c#9009f2c24771ba0a20f8f7534471c9869188f76c"
 dependencies = [
- "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
 ]
 
 [[package]]
@@ -234,6 +233,12 @@ checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
 dependencies = [
  "either",
 ]
+
+[[package]]
+name = "libm"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
 name = "nb"
@@ -496,6 +501,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "hd44780-driver",
  "heapless",
+ "libm",
  "panic-halt",
  "rp-pico",
 ]
