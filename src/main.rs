@@ -4,13 +4,17 @@
 use core::fmt::Write;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{InputPin, OutputPin};
+use embedded_hal::pwm::SetDutyCycle;
 use hal::clocks::Clock;
 use hal::fugit::RateExtU32;
 use hal::pac;
+use hal::pwm::Slices;
 use hal::uart::*;
-use heapless::String;
 use panic_halt as _;
 use rp_pico::hal;
+
+use heapless::String;
+use libm::{floorf, roundf};
 
 use crate::lcd::LcdDisplay;
 mod lcd;
@@ -98,7 +102,7 @@ fn main() -> ! {
         &clocks.system_clock,
     );
 
-    let mut lcd = LcdDisplay::new(i2c, timer);
+    let mut lcd = LcdDisplay::new(i2c, timer).unwrap();
 
     // LED
     let mut rgb_led_red_pin = pins.gpio28.into_push_pull_output();
@@ -125,6 +129,27 @@ fn main() -> ! {
         )
         .unwrap();
 
+    // PWM
+    // スライス番号 = (GPIOピン番号 / 2) % 8
+    // 偶数のGPIOピン：チャンネルA, 奇数のGPIOピン：チャンネルB
+    // -> GPIO9はPWM4のBチャンネル
+    let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
+    let mut pwm = pwm_slices.pwm4;
+    pwm.set_ph_correct();
+    pwm.enable();
+
+    let alarm_frequency: u32 = 440;
+    pwm.set_top(65535);
+    let div = clocks.system_clock.freq().to_Hz() as f32 / (alarm_frequency as f32 * 65535.0);
+    let div_int = floorf(div) as u8;
+    let div_frac = roundf((div - div_int as f32) * 16.0) as u8;
+
+    pwm.set_div_int(div_int);
+    pwm.set_div_frac(div_frac);
+
+    let mut channel = pwm.channel_b;
+    channel.output_to(pins.gpio9);
+
     writeln!(uart, "Hello, world!\r").unwrap();
 
     lcd.write_line("@yu1hpa", &mut timer).unwrap();
@@ -133,6 +158,9 @@ fn main() -> ! {
     let mut loop_cnt = 0u32;
     let mut status = Status::new();
     loop {
+        let _ = channel.set_duty_cycle(channel.max_duty_cycle() / 2);
+        let _ = channel.set_duty_cycle(0);
+
         // LCDディスプレイに早押しボタンが押されるまでカウントを表示
         if loop_cnt % LCD_UPDATE_INTERVAL == 0 && !status.lock {
             let mut s: String<64> = String::new(); // heapless
